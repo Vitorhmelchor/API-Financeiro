@@ -1,0 +1,412 @@
+openapi: 3.0.0
+info:
+  title: API Financeira Pessoal
+  description: |
+    API completa para gerenciamento de finanças pessoais, incluindo:
+    - Autenticação de usuários
+    - Gestão de categorias
+    - Registro de gastos e receitas
+    - Controle de metas financeiras
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor local (desenvolvimento)
+  - url: https://api.seusite.com/v1
+    description: Servidor de produção
+
+# Schemas
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Insira o token JWT no formato: Bearer <token>
+
+  responses:
+    UnauthorizedError:
+      description: Token inválido ou ausente
+    NotFoundError:
+      description: Recurso não encontrado
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: João Silva
+        email:
+          type: string
+          format: email
+          example: usuario@example.com
+        data_criacao:
+          type: string
+          format: date-time
+          example: "2023-01-15T10:30:00Z"
+
+    Categoria:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Alimentação
+        icone:
+          type: string
+          example: shopping-cart
+        cor:
+          type: string
+          example: vermelho
+        usuario_id:
+          type: integer
+          example: 1
+
+    CategoriaInput:
+      type: object
+      required: [nome]
+      properties:
+        nome:
+          type: string
+          example: Transporte
+        icone:
+          type: string
+          example: car
+          nullable: true
+        cor:
+          type: string
+          example: azul
+          nullable: true
+
+    Gasto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        descricao:
+          type: string
+          example: Supermercado
+        valor:
+          type: number
+          format: float
+          example: 150.75
+        data:
+          type: string
+          format: date
+          example: "2023-01-15"
+        categoria_id:
+          type: integer
+          example: 1
+        categoria_nome:
+          type: string
+          example: Alimentação
+        pago:
+          type: boolean
+          example: true
+        usuario_id:
+          type: integer
+          example: 1
+
+    GastoInput:
+      type: object
+      required: [descricao, valor, data, categoria_id]
+      properties:
+        descricao:
+          type: string
+          example: Supermercado
+        valor:
+          type: number
+          format: float
+          example: 150.75
+          minimum: 0.01
+        data:
+          type: string
+          format: date
+          example: "2023-01-15"
+        categoria_id:
+          type: integer
+          example: 1
+        pago:
+          type: boolean
+          example: true
+
+    Meta:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        descricao:
+          type: string
+          example: Comprar notebook
+        valor_objetivo:
+          type: number
+          format: float
+          example: 3500.00
+        valor_atual:
+          type: number
+          format: float
+          example: 1500.00
+        data_limite:
+          type: string
+          format: date
+          example: "2023-06-30"
+        usuario_id:
+          type: integer
+          example: 1
+
+tags:
+  - name: Autenticação
+    description: Login, registro e verificação de usuários
+  - name: Categorias
+    description: Gerenciamento de categorias de gastos
+  - name: Gastos
+    description: Registro e controle de despesas
+  - name: Receitas
+    description: Registro de ganhos financeiros
+  - name: Metas
+    description: Definição e acompanhamento de objetivos financeiros
+
+paths:
+  /auth/register:
+    post:
+      tags: [Autenticação]
+      summary: Registrar novo usuário
+      description: Cria uma nova conta de usuário no sistema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, senha]
+              properties:
+                nome:
+                  type: string
+                  example: João Silva
+                  minLength: 3
+                email:
+                  type: string
+                  format: email
+                  example: usuario@example.com
+                senha:
+                  type: string
+                  format: password
+                  example: SenhaSegura@123
+                  minLength: 6
+      responses:
+        201:
+          description: Usuário registrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/User'
+        400:
+          description: Dados inválidos ou incompletos
+        409:
+          description: E-mail já cadastrado
+
+  /auth/login:
+    post:
+      tags: [Autenticação]
+      summary: Efetuar login
+      description: Autentica um usuário e retorna um token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: usuario@example.com
+                senha:
+                  type: string
+                  format: password
+                  example: SenhaSegura@123
+      responses:
+        200:
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/User'
+        401:
+          description: Credenciais inválidas
+        404:
+          description: Usuário não encontrado
+
+  # Rotas
+  /categorias:
+    get:
+      tags: [Categorias]
+      summary: Listar categorias do usuário
+      description: Retorna todas as categorias cadastradas pelo usuário autenticado
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Categoria'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags: [Categorias]
+      summary: Criar nova categoria
+      description: Cadastra uma nova categoria para o usuário autenticado
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoriaInput'
+      responses:
+        201:
+          description: Categoria criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        400:
+          description: Dados inválidos
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /gastos:
+    get:
+      tags: [Gastos]
+      summary: Listar gastos do usuário
+      description: Retorna todos os gastos do usuário, com filtros opcionais
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Data inicial para filtro (YYYY-MM-DD)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Data final para filtro (YYYY-MM-DD)
+        - in: query
+          name: categoria
+          schema:
+            type: integer
+          description: ID da categoria para filtro
+      responses:
+        200:
+          description: Lista de gastos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Gasto'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags: [Gastos]
+      summary: Registrar novo gasto
+      description: Adiciona um novo registro de despesa
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GastoInput'
+      responses:
+        201:
+          description: Gasto registrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gasto'
+        400:
+          description: Dados inválidos
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          description: Categoria não encontrada
+
+  /metas/{id}/add:
+    patch:
+      tags: [Metas]
+      summary: Adicionar valor à meta
+      description: Incrementa o valor atual de uma meta financeira
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID da meta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [valor]
+              properties:
+                valor:
+                  type: number
+                  format: float
+                  example: 150.50
+                  minimum: 0.01
+      responses:
+        200:
+          description: Valor adicionado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meta'
+        400:
+          description: Valor inválido
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        404:
+          $ref: '#/components/responses/NotFoundError'
