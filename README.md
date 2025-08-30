@@ -38,7 +38,7 @@ Olá! Esta é uma API completa para gerenciamento de finanças pessoais, com aut
 
 1. **Clone o repositório**:
    ```bash
-   git clone https://github.com/seu-usuario/finance-api.git
+   git clone https:(https://github.com/Vitorhmelchor/API-Financeiro)
    cd finance-api
 
  2. **Instale as dependências**:
